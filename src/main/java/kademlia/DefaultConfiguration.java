@@ -17,7 +17,7 @@ public class DefaultConfiguration implements KadConfiguration
     private final static int K = 5;
     private final static int RCSIZE = 3;
     private final static int STALE = 1;
-    private final static String LOCAL_FOLDER = "kademlia";
+    private final static String LOCAL_FOLDER = "kadStore";
     
     private final static boolean IS_TESTING = true;
 
@@ -75,7 +75,8 @@ public class DefaultConfiguration implements KadConfiguration
     public String getNodeDataFolder(String ownerId)
     {
         /* Setup the main storage folder if it doesn't exist */
-        String path = System.getProperty("user.home") + File.separator + DefaultConfiguration.LOCAL_FOLDER;
+//        String path = System.getProperty("user.home") + File.separator + DefaultConfiguration.LOCAL_FOLDER;
+        String path = DefaultConfiguration.LOCAL_FOLDER;
         File folder = new File(path);
         if (!folder.isDirectory())
         {
