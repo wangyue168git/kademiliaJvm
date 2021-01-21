@@ -1,0 +1,88 @@
+package kademlia.file;
+
+import kademlia.JKademliaNode;
+import kademlia.dht.GetParameter;
+import kademlia.dht.KademliaStorageEntry;
+import kademlia.exceptions.ContentNotFoundException;
+import kademlia.node.KademliaId;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * @author wesleywang
+ * @Description:
+ * @date 2021/1/21
+ */
+public class FileSliceManager {
+
+    public static final int sliceLength = 1024 * 16;
+
+    public static FileContent slice(String filePath) throws IOException {
+        File file = new File(filePath);
+        long length = file.length();
+        FileContent fileContent = new FileContent();
+        int index = 0;
+        FileInputStream inputStream = new FileInputStream(file);
+        //分多次将一个文件读入
+        while (length > 0) {
+            byte[] buffer;
+            if (length <= sliceLength) {
+                buffer = new byte[(int) length];
+                length -= length;
+            }else {
+                buffer = new byte[sliceLength];
+                length -= sliceLength;
+            }
+
+            if (inputStream.read(buffer, 0, buffer.length) != -1) {
+                FileBlock fileBlock = new FileBlock();
+                fileBlock.setIndex(index++);
+                fileBlock.setData(buffer);
+                fileBlock.setLength(buffer.length);
+//                fileBlock.setBlockHash(FileHashUtil.Sha1Hash(buffer));
+                fileBlock.setKademliaId(new KademliaId());
+                fileContent.addFileBlock(fileBlock);
+                continue;
+            }
+            break;
+        }
+        fileContent.setKademliaId(new KademliaId());
+        String fileName = file.getName();
+        fileContent.setFileName(fileName);
+        fileContent.setFileType(fileName.substring(fileName.lastIndexOf(".") + 1));
+        inputStream.close();
+        return fileContent;
+    }
+
+    public static void downLoadFile(KademliaId key, JKademliaNode node, String ownerId) throws IOException, ContentNotFoundException {
+        GetParameter gp = new GetParameter(key, FileIndex.TYPE);
+        gp.setOwnerId(ownerId);
+        KademliaStorageEntry index  = node.get(gp);
+        FileIndex fileIndexContent = new FileIndex().fromSerializedForm(index.getContent());
+        List<FileBlock> blockList = new ArrayList<>();
+        for (KademliaId id : fileIndexContent.getIds()) {
+            GetParameter blockPara = new GetParameter(id, FileBlock.TYPE);
+            gp.setOwnerId(ownerId);
+            try {
+                KademliaStorageEntry entry  = node.get(blockPara);
+                FileBlock block = new FileBlock().fromSerializedForm(entry.getContent());
+                blockList.add(block);
+            } catch (IOException | ContentNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        blockList.sort(Comparator.comparingInt(FileBlock::getIndex));
+        FileOutputStream outputStream = new FileOutputStream(fileIndexContent.getFileName(),true);
+        for (FileBlock block : blockList) {
+            outputStream.write(block.getData());
+        }
+        outputStream.close();
+    }
+
+}
