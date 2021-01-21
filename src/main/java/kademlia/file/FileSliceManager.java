@@ -5,6 +5,7 @@ import kademlia.dht.GetParameter;
 import kademlia.dht.KademliaStorageEntry;
 import kademlia.exceptions.ContentNotFoundException;
 import kademlia.node.KademliaId;
+import kademlia.util.BufferedRandomAccessFile;
 import kademlia.util.FileHashUtil;
 
 import java.io.File;
@@ -67,23 +68,20 @@ public class FileSliceManager {
         GetParameter gp = new GetParameter(key, FileIndex.TYPE);
         KademliaStorageEntry index  = node.get(gp);
         FileIndex fileIndexContent = new FileIndex().fromSerializedForm(index.getContent());
-        List<FileBlock> blockList = new ArrayList<>();
+        BufferedRandomAccessFile randomAccessFile = new BufferedRandomAccessFile(fileIndexContent.getFileName(),"rw");
         for (KademliaId id : fileIndexContent.getIds()) {
             GetParameter blockPara = new GetParameter(id, FileBlock.TYPE);
             try {
                 KademliaStorageEntry entry  = node.get(blockPara);
                 FileBlock block = new FileBlock().fromSerializedForm(entry.getContent());
-                blockList.add(block);
+                //文件写入指定位置
+                randomAccessFile.seek(block.getIndex() * sliceLength);
+                randomAccessFile.write(block.getData());
             } catch (IOException | ContentNotFoundException e) {
                 e.printStackTrace();
             }
         }
-        blockList.sort(Comparator.comparingInt(FileBlock::getIndex));
-        FileOutputStream outputStream = new FileOutputStream(fileIndexContent.getFileName(),true);
-        for (FileBlock block : blockList) {
-            outputStream.write(block.getData());
-        }
-        outputStream.close();
+        randomAccessFile.close();
     }
 
 }
