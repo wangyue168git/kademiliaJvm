@@ -1,15 +1,10 @@
-package kademlia.file;
-
-import com.sun.crypto.provider.HmacSHA1;
-import org.apache.commons.codec.binary.Hex;
-import sun.security.provider.SHA;
+package kademlia.util;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 /**
  * @author wesleywang
@@ -17,43 +12,6 @@ import java.security.NoSuchAlgorithmException;
  * @date 2021/1/21
  */
 public class FileHashUtil {
-
-    private static final char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'a', 'b', 'c', 'd', 'e', 'f'};
-
-    public static void main(String[] args) {
-        try {
-            //此处我测试的是我本机jdk源码文件的MD5值
-            String filePath = "/Users/wangyue/fisco/kademiliaJvm/libs/gson-2.6.2.jar";
-
-            String md5Hashcode = md5HashCode(filePath);
-            String md5Hashcode32 = md5HashCode32(filePath);
-
-            System.out.println(md5Hashcode + "：文件的md5值");
-            System.out.println(md5Hashcode32+"：文件32位的md5值");
-
-            System.out.println(encode(filePath.getBytes()));
-
-            //System.out.println(-100 & 0xff);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public static String Sha1Hash(byte[] data){
-        //MessageDigest MessageDigest.getInstance(algorithm);
-        MessageDigest messageDigest = null;
-        try {
-            messageDigest = MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        byte[] ciphertext = messageDigest.digest(data);
-
-        return Hex.encodeHexString(ciphertext);
-    }
-
 
     private static final char[] HEX_DIGITS = {'0', '1', '2', '3', '4', '5',
             '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
@@ -68,60 +26,57 @@ public class FileHashUtil {
         int len = bytes.length;
         StringBuilder buf = new StringBuilder(len * 2);
         // 把密文转换成十六进制的字符串形式
-        for (int j = 0; j < len; j++) {
-            buf.append(HEX_DIGITS[(bytes[j] >> 4) & 0x0f]);
-            buf.append(HEX_DIGITS[bytes[j] & 0x0f]);
+        for (int i = 0; i < bytes.length; i++) {
+            byte aByte = bytes[i];
+            buf.append(HEX_DIGITS[(aByte >> 4) & 0x0f]);
+            buf.append(HEX_DIGITS[aByte & 0x0f]);
         }
         return buf.toString();
     }
 
-    public static String encode(byte[] bytes) {
+    public static byte[] sha1Hash(byte[] bytes) {
         if (bytes == null) {
             return null;
         }
         try {
             MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
             messageDigest.update(bytes);
-            return getFormattedText(messageDigest.digest());
+            return messageDigest.digest();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
 
-    /**
-     * 获取文件的md5值 ，有可能不是32位
-     * @param filePath	文件路径
-     * @return
-     * @throws FileNotFoundException
-     */
-    public static String md5HashCode(String filePath) throws FileNotFoundException{
+    public static String shaHashCode(String filePath) throws FileNotFoundException {
         FileInputStream fis = new FileInputStream(filePath);
-        return md5HashCode(fis);
+        BigInteger bigInt = new BigInteger(1, shaHashCode(fis));//1代表绝对值
+        return bigInt.toString(16);//转换为16进制
     }
 
     /**
      * 保证文件的MD5值为32位
-     * @param filePath	文件路径
+     *
+     * @param filePath 文件路径
      * @return
      * @throws FileNotFoundException
      */
-    public static String md5HashCode32(String filePath) throws FileNotFoundException{
+    public static String md5HashCode32(String filePath) throws FileNotFoundException {
         FileInputStream fis = new FileInputStream(filePath);
         return md5HashCode32(fis);
     }
 
     /**
      * java获取文件的md5值
+     *
      * @param fis 输入流
      * @return
      */
-    public static String md5HashCode(InputStream fis) {
+    public static byte[] shaHashCode(InputStream fis) {
+        byte[] bytes = null;
         try {
-            //拿到一个MD5转换器,如果想使用SHA-1或SHA-256，则传入SHA-1,SHA-256
-            MessageDigest md = MessageDigest.getInstance("MD5");
-
-            //分多次将一个文件读入，对于大型文件而言，比较推荐这种方式，占用内存比较少。
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            //分多次将一个文件读入，对于大型文件而言，占用内存比较少。
             byte[] buffer = new byte[1024];
             int length = -1;
             while ((length = fis.read(buffer, 0, 1024)) != -1) {
@@ -129,17 +84,16 @@ public class FileHashUtil {
             }
             fis.close();
             //转换并返回包含16个元素字节数组,返回数值范围为-128到127
-            byte[] md5Bytes  = md.digest();
-            BigInteger bigInt = new BigInteger(1, md5Bytes);//1代表绝对值
-            return bigInt.toString(16);//转换为16进制
+            bytes = md.digest();
         } catch (Exception e) {
             e.printStackTrace();
-            return "";
         }
+        return bytes;
     }
 
     /**
      * java计算文件32位md5值
+     *
      * @param fis 输入流
      * @return
      */
@@ -157,7 +111,7 @@ public class FileHashUtil {
             fis.close();
 
             //转换并返回包含16个元素字节数组,返回数值范围为-128到127
-            byte[] md5Bytes  = md.digest();
+            byte[] md5Bytes = md.digest();
             StringBuffer hexValue = new StringBuffer();
             for (int i = 0; i < md5Bytes.length; i++) {
                 int val = ((int) md5Bytes[i]) & 0xff;//解释参见最下方
@@ -178,15 +132,6 @@ public class FileHashUtil {
             return "";
         }
     }
-
-    /**
-     * 方法md5HashCode32 中     ((int) md5Bytes[i]) & 0xff   操作的解释：
-     * 在Java语言中涉及到字节byte数组数据的一些操作时，经常看到 byte[i] & 0xff这样的操作，这里就记录总结一下这里包含的意义：
-     * 1、0xff是16进制（十进制是255），它默认为整形，二进制位为32位，最低八位是“1111 1111”，其余24位都是0。
-     * 2、&运算: 如果2个bit都是1，则得1，否则得0；
-     * 3、byte[i] & 0xff：首先，这个操作一般都是在将byte数据转成int或者其他整形数据的过程中；使用了这个操作，最终的整形数据只有低8位有数据，其他位数都为0。
-     * 4、这个操作得出的整形数据都是大于等于0并且小于等于255的
-     */
 
 
 }

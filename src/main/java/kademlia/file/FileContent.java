@@ -16,8 +16,6 @@ public class FileContent {
 
     private KademliaId kademliaId;
 
-    private String fileType;
-
     private String fileName;
 
     private List<KademliaId> kadIds = new ArrayList<>();
@@ -48,11 +46,7 @@ public class FileContent {
     }
 
     public String getFileType() {
-        return fileType;
-    }
-
-    public void setFileType(String fileType) {
-        this.fileType = fileType;
+        return fileName.substring(fileName.lastIndexOf(".") + 1);
     }
 
     public String getFileName() {

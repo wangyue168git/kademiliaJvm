@@ -30,8 +30,8 @@ public class FileOperationTest {
              */
             String filePath = "/Users/wangyue/fisco/ipfs/kademiliaJvm/libs/gson-2.6.2.jar";
             FileContent content = FileSliceManager.slice(filePath);
-            FileIndex fileShardContent = new FileIndex(content.getKademliaId(),content.getKadIds(),
-                    content.getFileName(),kad2.getOwnerId());
+            FileIndex fileShardContent = new FileIndex(content.getKademliaId(), content.getKadIds(),
+                    content.getFileName(), kad2.getOwnerId());
 
             kad2.put(fileShardContent);
             content.getFileBlockList().forEach(fileBlock -> {
@@ -43,8 +43,7 @@ public class FileOperationTest {
                 }
             });
 
-            FileSliceManager.downLoadFile(fileShardContent.getKey(),kad1,kad2.getOwnerId());
-//            System.exit(0);
+            FileSliceManager.downLoadFile(fileShardContent.getKey(),kad1);
             System.out.println("文件下载成功");
 
         }

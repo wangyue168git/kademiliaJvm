@@ -5,6 +5,7 @@ import kademlia.dht.GetParameter;
 import kademlia.dht.KademliaStorageEntry;
 import kademlia.exceptions.ContentNotFoundException;
 import kademlia.node.KademliaId;
+import kademlia.util.FileHashUtil;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,30 +46,30 @@ public class FileSliceManager {
                 fileBlock.setIndex(index++);
                 fileBlock.setData(buffer);
                 fileBlock.setLength(buffer.length);
-//                fileBlock.setBlockHash(FileHashUtil.Sha1Hash(buffer));
-                fileBlock.setKademliaId(new KademliaId());
+                fileBlock.setKademliaId(new KademliaId(FileHashUtil.sha1Hash(buffer)));
                 fileContent.addFileBlock(fileBlock);
                 continue;
             }
             break;
         }
-        fileContent.setKademliaId(new KademliaId());
+        byte[] fileKey = FileHashUtil.shaHashCode(inputStream);
+        if (fileKey == null){
+            throw new RuntimeException("FileHashUtil.shaHashCode wrong");
+        }
+        fileContent.setKademliaId(new KademliaId(fileKey));
         String fileName = file.getName();
         fileContent.setFileName(fileName);
-        fileContent.setFileType(fileName.substring(fileName.lastIndexOf(".") + 1));
         inputStream.close();
         return fileContent;
     }
 
-    public static void downLoadFile(KademliaId key, JKademliaNode node, String ownerId) throws IOException, ContentNotFoundException {
+    public static void downLoadFile(KademliaId key, JKademliaNode node) throws IOException, ContentNotFoundException {
         GetParameter gp = new GetParameter(key, FileIndex.TYPE);
-        gp.setOwnerId(ownerId);
         KademliaStorageEntry index  = node.get(gp);
         FileIndex fileIndexContent = new FileIndex().fromSerializedForm(index.getContent());
         List<FileBlock> blockList = new ArrayList<>();
         for (KademliaId id : fileIndexContent.getIds()) {
             GetParameter blockPara = new GetParameter(id, FileBlock.TYPE);
-            gp.setOwnerId(ownerId);
             try {
                 KademliaStorageEntry entry  = node.get(blockPara);
                 FileBlock block = new FileBlock().fromSerializedForm(entry.getContent());
