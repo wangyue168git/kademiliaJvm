@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
+
 import kademlia.exceptions.ContentExistException;
 import kademlia.exceptions.ContentNotFoundException;
 import kademlia.node.KademliaId;
@@ -24,7 +26,7 @@ class StoredContentManager
 
     
     {
-        entries = new HashMap<>();
+        entries = new ConcurrentHashMap<>();
     }
 
     /**

@@ -98,7 +98,6 @@ public class DHT implements KademliaDHT
          */
         try
         {
-            //System.out.println("Adding new content.");
             /* Keep track of this content in the entries manager */
             KademliaStorageEntryMetadata sEntry = this.contentManager.put(content.getContentMetadata());
 

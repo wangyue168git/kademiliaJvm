@@ -40,7 +40,7 @@ public class FileOperationTest {
                 }
             });
 
-            FileSliceManager.downLoadFile(fileShardContent.getKey(),kad1);
+            FileSliceManager.downLoadFile(fileShardContent.getKey(),kad1,"");
             System.out.println("文件下载成功");
 
         }

@@ -64,11 +64,11 @@ public class FileSliceManager {
         return fileContent;
     }
 
-    public static void downLoadFile(KademliaId key, JKademliaNode node) throws IOException, ContentNotFoundException {
+    public static String downLoadFile(KademliaId key, JKademliaNode node, String savePath) throws IOException, ContentNotFoundException {
         GetParameter gp = new GetParameter(key, FileIndex.TYPE);
         KademliaStorageEntry index  = node.get(gp);
         FileIndex fileIndexContent = new FileIndex().fromSerializedForm(index.getContent());
-        BufferedRandomAccessFile randomAccessFile = new BufferedRandomAccessFile(fileIndexContent.getFileName(),"rw");
+        BufferedRandomAccessFile randomAccessFile = new BufferedRandomAccessFile(savePath + File.separator + fileIndexContent.getFileName(),"rw");
         for (KademliaId id : fileIndexContent.getIds()) {
             GetParameter blockPara = new GetParameter(id, FileBlock.TYPE);
             try {
@@ -82,6 +82,7 @@ public class FileSliceManager {
             }
         }
         randomAccessFile.close();
+        return fileIndexContent.getFileName();
     }
 
 }
