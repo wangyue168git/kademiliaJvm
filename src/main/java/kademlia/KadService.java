@@ -32,7 +32,7 @@ public class KadService {
     @PostConstruct
     private void create(){
         try {
-            log.info("种子值：" + config.getUser());
+            log.info("username：" + config.getUser());
             if (config.getUser().equals("seedNode0")){
                 node = new JKademliaNode(config.getUser(), new KademliaId(
                         FileHashUtil.sha1Hash("49.234.126.59".getBytes())), 20300);
