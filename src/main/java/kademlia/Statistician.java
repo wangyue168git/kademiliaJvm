@@ -1,6 +1,7 @@
 package kademlia;
 
 import java.text.DecimalFormat;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Class that keeps statistics for this Kademlia instance.
@@ -14,55 +15,61 @@ public class Statistician implements KadStatistician
 {
 
     /* How much data was sent and received by the server over the network */
-    private long totalDataSent, totalDataReceived;
-    private long numDataSent, numDataReceived;
+    private LongAdder totalDataSent, totalDataReceived;
+    private LongAdder numDataSent, numDataReceived;
 
     /* Bootstrap timings */
     private long bootstrapTime;
 
     /* Content lookup operation timing & route length */
     private int numContentLookups, numFailedContentLookups;
-    private long totalContentLookupTime;
-    private long totalRouteLength;
+    private LongAdder totalContentLookupTime;
+    private LongAdder totalRouteLength;
 
     
     {
         this.numContentLookups = 0;
+        this.totalDataSent = new LongAdder();
+        this.totalDataReceived = new LongAdder();
+        this.numDataSent = new LongAdder();
+        this.numDataReceived = new LongAdder();
+        this.totalContentLookupTime = new LongAdder();
+        this.totalRouteLength = new LongAdder();
     }
 
     @Override
     public void sentData(long size)
     {
-        this.totalDataSent += size;
-        this.numDataSent++;
+        this.totalDataSent.add(size);
+        this.numDataSent.add(1L);
     }
 
     @Override
     public long getTotalDataSent()
     {
-        if (this.totalDataSent == 0)
+        if (this.totalDataSent.longValue() == 0)
         {
             return 0L;
         }
         
-        return this.totalDataSent / 1000L;
+        return this.totalDataSent.longValue() / 1000L;
     }
 
     @Override
     public void receivedData(long size)
     {
-        this.totalDataReceived += size;
-        this.numDataReceived++;
+        this.totalDataReceived.add(size);
+        this.numDataReceived.add(1L);
     }
 
     @Override
     public long getTotalDataReceived()
     {
-        if (this.totalDataReceived == 0)
+        if (this.totalDataReceived.longValue() == 0)
         {
             return 0L;
         }
-        return this.totalDataReceived / 1000L;
+        return this.totalDataReceived.longValue() / 1000L;
     }
 
     @Override
@@ -83,8 +90,8 @@ public class Statistician implements KadStatistician
         if (isSuccessful)
         {
             this.numContentLookups++;
-            this.totalContentLookupTime += time;
-            this.totalRouteLength += routeLength;
+            this.totalContentLookupTime.add(time);
+            this.totalRouteLength.add(routeLength);
         }
         else
         {
@@ -107,7 +114,7 @@ public class Statistician implements KadStatistician
     @Override
     public long totalContentLookupTime()
     {
-        return this.totalContentLookupTime;
+        return this.totalContentLookupTime.longValue();
     }
 
     @Override
@@ -118,7 +125,7 @@ public class Statistician implements KadStatistician
             return 0D;
         }
 
-        double avg = (double) ((double) this.totalContentLookupTime / (double) this.numContentLookups) / 1000000D;
+        double avg = (double) this.totalContentLookupTime.longValue() / (double) this.numContentLookups / 1000000D;
         DecimalFormat df = new DecimalFormat("#.00");
         return new Double(df.format(avg));
     }
@@ -130,7 +137,7 @@ public class Statistician implements KadStatistician
         {
             return 0D;
         }
-        double avg = (double) ((double) this.totalRouteLength / (double) this.numContentLookups);
+        double avg = (double) this.totalRouteLength.longValue() / (double) this.numContentLookups;
         DecimalFormat df = new DecimalFormat("#.00");
         return new Double(df.format(avg));
     }

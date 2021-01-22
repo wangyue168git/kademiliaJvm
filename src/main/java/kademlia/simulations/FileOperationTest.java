@@ -25,9 +25,6 @@ public class FileOperationTest {
             System.out.println("Created Node Kad 2: " + kad2.getNode().getNodeId());
             kad2.bootstrap(kad1.getNode());
 
-            /**
-             * Lets create the content and share it
-             */
             String filePath = "/Users/wangyue/fisco/ipfs/kademiliaJvm/libs/gson-2.6.2.jar";
             FileContent content = FileSliceManager.slice(filePath);
             FileIndex fileShardContent = new FileIndex(content.getKademliaId(), content.getKadIds(),

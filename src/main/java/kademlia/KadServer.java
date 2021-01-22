@@ -5,6 +5,7 @@ import kademlia.message.KademliaMessageFactory;
 import kademlia.message.Message;
 import kademlia.message.Receiver;
 import kademlia.node.Node;
+import kademlia.util.CountableThreadPool;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -31,7 +33,9 @@ public class KadServer
 {
 
     /* Maximum size of a Datagram Packet */
-    private static final int DATAGRAM_BUFFER_SIZE = 128 * 1024;      // 64KB
+    private static final int DATAGRAM_BUFFER_SIZE = 64 * 1024;      // 64KB
+
+    private final CountableThreadPool executor = new CountableThreadPool(100);
 
     /* Basic Kad Objects */
     private final transient KadConfiguration config;
@@ -53,8 +57,8 @@ public class KadServer
     
     {
         isRunning = true;
-        this.tasks = new HashMap<>();
-        this.receivers = new HashMap<>();
+        this.tasks = new ConcurrentHashMap<>();
+        this.receivers = new ConcurrentHashMap<>();
         this.timer = new Timer(true);
     }
 
@@ -108,7 +112,7 @@ public class KadServer
      * @throws IOException
      * @throws KadServerDownException
      */
-    public synchronized int sendMessage(Node to, Message msg, Receiver recv) throws IOException, KadServerDownException
+    public int sendMessage(Node to, Message msg, Receiver recv) throws IOException, KadServerDownException
     {
         if (!isRunning)
         {
@@ -135,9 +139,14 @@ public class KadServer
             }
         }
 
-        /* Send the message */
-        sendMessage(to, msg, comm);
-
+        executor.execute(() -> {
+            try {
+                /* Send the message */
+                sendMessage(to, msg, comm);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
         return comm;
     }
 
@@ -150,7 +159,7 @@ public class KadServer
      *
      * @throws IOException
      */
-    public synchronized void reply(Node to, Message msg, int comm) throws IOException
+    public void reply(Node to, Message msg, int comm) throws IOException
     {
         if (!isRunning)
         {
@@ -227,44 +236,13 @@ public class KadServer
                     }
 
                     /* We've received a packet, now handle it */
-                    try (ByteArrayInputStream bin = new ByteArrayInputStream(packet.getData(), packet.getOffset(), packet.getLength());
-                            DataInputStream din = new DataInputStream(bin);)
-                    {
-
-                        /* Read in the conversation Id to know which handler to handle this response */
-                        int comm = din.readInt();
-                        byte messCode = din.readByte();
-
-                        Message msg = messageFactory.createMessage(messCode, din);
-                        din.close();
-
-                        /* Get a receiver for this message */
-                        Receiver receiver;
-                        if (this.receivers.containsKey(comm))
-                        {
-                            /* If there is a reciever in the receivers to handle this */
-                            synchronized (this)
-                            {
-                                receiver = this.receivers.remove(comm);
-                                TimerTask task = tasks.remove(comm);
-                                if (task != null)
-                                {
-                                    task.cancel();
-                                }
-                            }
+                    executor.execute(() -> {
+                        try {
+                            receiveHandle(packet);
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                        else
-                        {
-                            /* There is currently no receivers, try to get one */
-                            receiver = messageFactory.createReceiver(messCode, this);
-                        }
-
-                        /* Invoke the receiver */
-                        if (receiver != null)
-                        {
-                            receiver.receive(msg, comm);
-                        }
-                    }
+                    });
                 }
                 catch (IOException e)
                 {
@@ -282,6 +260,43 @@ public class KadServer
             this.isRunning = false;
         }
     }
+
+    private void receiveHandle(DatagramPacket packet) throws IOException {
+        /* We've received a packet, now handle it */
+        try(ByteArrayInputStream bin = new ByteArrayInputStream(packet.getData(), packet.getOffset(), packet.getLength());
+        DataInputStream din = new DataInputStream(bin);) {
+
+            /* Read in the conversation Id to know which handler to handle this response */
+            int comm = din.readInt();
+            byte messCode = din.readByte();
+
+            Message msg = messageFactory.createMessage(messCode, din);
+            din.close();
+
+            /* Get a receiver for this message */
+            Receiver receiver;
+            if (this.receivers.containsKey(comm)) {
+                /* If there is a reciever in the receivers to handle this */
+                synchronized (this) {
+                    receiver = this.receivers.remove(comm);
+                    TimerTask task = tasks.remove(comm);
+                    if (task != null) {
+                        task.cancel();
+                    }
+                }
+            } else {
+                /* There is currently no receivers, try to get one */
+                receiver = messageFactory.createReceiver(messCode, this);
+            }
+
+            /* Invoke the receiver */
+            if (receiver != null) {
+                receiver.receive(msg, comm);
+            }
+        }
+    }
+
+
 
     /**
      * Remove a conversation receiver
